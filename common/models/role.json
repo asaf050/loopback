@@ -1,5 +1,6 @@
 {
   "name": "Role",
+  "trackChanges": true,
   "properties": {
 
     "id": {
