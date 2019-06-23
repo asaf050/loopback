@@ -1,3 +1,235 @@
+2019-05-31, Version 3.26.0
+==========================
+
+ * fix: disallow queries in username and email fields (Hage Yaapa)
+
+ * Ignore failing downstream dependencies (Miroslav Bajtoš)
+
+ * Upgrade nyc to version 14 (Miroslav Bajtoš)
+
+ * Update Karma dependencies to latest versions (Miroslav Bajtoš)
+
+ * Drop Node.js 6.x from the supported versions (Miroslav Bajtoš)
+
+ * Fix Model.exists() to work with remote connector (Maxim Sharai)
+
+ * chore: update copyrights years (Agnes Lin)
+
+ * Update LTS status (Diana Lau)
+
+ * Enable Node.js 12.x on Travis CI (Miroslav Bajtoš)
+
+ * chore: update copyright year (Diana Lau)
+
+ * chore: update LB3 EOL date (Diana Lau)
+
+
+2019-03-15, Version 3.25.1
+==========================
+
+ * Back-ticks added to highlight example JSON (Quentin Presley)
+
+ * Add same change to description for findOne (Quentin Presley)
+
+ * Update the description for persisted-models (Quentin Presley)
+
+ * handle $2b$ in hashed password check (Sylvain Dumont)
+
+
+2019-02-05, Version 3.25.0
+==========================
+
+ * Support middleware injected by AppDynamics. (Mike Li)
+
+
+2019-01-11, Version 3.24.2
+==========================
+
+ * Fix crash when modifying an unknown user (Matheus Horstmann)
+
+
+2019-01-08, Version 3.24.1
+==========================
+
+ * Update underscore.string to 3.3.5 (Francois)
+
+ * Fix: treat empty access token string as undefined (andrey-abramow)
+
+
+2018-11-15, Version 3.24.0
+==========================
+
+ * Set juggler options for remote calls (Raymond Feng)
+
+ * Speed up ACL tests by reducing saltWorkFactor (Miroslav Bajtoš)
+
+
+2018-10-25, Version 3.23.2
+==========================
+
+ * Fix ACL check to support model wildcard (Moshe Malka)
+
+
+2018-10-18, Version 3.23.1
+==========================
+
+ * README: highlight Active LTS at the top (Miroslav Bajtoš)
+
+
+2018-10-09, Version 3.23.0
+==========================
+
+ * Clear handler cache when a method is added/removed (Mohammed Essehemy)
+
+ * Add `options.preserveAccessTokens` (lchaglla)
+
+ * Update LB3 to be active LTS (Diana Lau)
+
+ * Fix ACL tests to wait until all assertions finish (Moshe Malka)
+
+ * chore: update to latest linting rules (virkt25)
+
+
+2018-09-12, Version 3.22.3
+==========================
+
+ * chore: use grunt to install optional  phantomjs (virkt25)
+
+ * [WebFM] fr translation (candytangnb)
+
+
+2018-08-29, Version 3.22.2
+==========================
+
+ * [WebFM] tr translation (candytangnb)
+
+ * [WebFM] de translation (candytangnb)
+
+ * [WebFM] cs/es/fr/it/nl/pl/pt_BR/ru translation (candytangnb)
+
+
+2018-08-22, Version 3.22.1
+==========================
+
+ * [WebFM] ja/ko/zh_CN/zh_TW translation (candytangnb)
+
+ * remove unnecessary format call (Diana Lau)
+
+ * Make desc when export-api-def translatable (Diana Lau)
+
+
+2018-08-08, Version 3.22.0
+==========================
+
+ * fix: accessToken create default acl (virkt25)
+
+ * add: ppc64 and s390x to not run UI tests (Thomas Leah)
+
+ * chore: update deps + fix linting + .npmrc (virkt25)
+
+ * Update Loopback 2.x EOL dates (Chris Bailey)
+
+ * Fix formatting (Chris Bailey)
+
+ * Update support badge and move LTS section (Chris Bailey)
+
+ * Add badges and information for LTS and support (Chris Bailey)
+
+
+2018-07-09, Version 3.21.0
+==========================
+
+ * Make verifyUserRelations() more robust (mcitdev)
+
+ * Fix crash in verifyUserRelations (ryanxwelch)
+
+ * Fix crash in User model's "before delete" hook (mcitdev)
+
+ * [WebFM] cs/pl/ru translation (candytangnb)
+
+ * Update strong-error-handler (shimks)
+
+
+2018-06-12, Version 3.20.0
+==========================
+
+ * Update strong-globalize to 4.x (Miroslav Bajtoš)
+
+ * Update nodemailer to v4.x (Dimitris)
+
+ * Drop support for Node.js 4.x (Miroslav Bajtoš)
+
+
+2018-06-04, Version 3.19.3
+==========================
+
+ * Provide link to CODEOWNERS (Aditya Agarwal)
+
+ * fix bug in User.verify when confirm is disabled (wolrajhti)
+
+ * Enable Node.js 10.x on Travis CI (Miroslav Bajtoš)
+
+
+2018-05-29, Version 3.19.2
+==========================
+
+ * Add check for undefined user email in setter (Kevin Scroggins)
+
+
+2018-05-21, Version 3.19.1
+==========================
+
+ * Fix isOwner() bug in multiple-principal setup (Miroslav Bajtoš)
+
+
+2018-04-17, Version 3.19.0
+==========================
+
+ * feat: remove all references to a Model (Miroslav Bajtoš)
+
+
+2018-03-22, Version 3.18.3
+==========================
+
+ * Remove forgotten debugger statement (Miroslav Bajtoš)
+
+ * Fix role check in apps with multiple user models (Miroslav Bajtoš)
+
+ * Fix formatting issues reported by recent eslint (Miroslav Bajtoš)
+
+ * CODEOWNERS: add nitro404 (Miroslav Bajtoš)
+
+ * test: add missing "return" in a promise-style test (Miroslav Bajtoš)
+
+
+2018-02-08, Version 3.18.2
+==========================
+
+ * model: fix infinite loop on nestRemoting (Kevin Delisle)
+
+ * Use statusCode prop for user errors (Zak Barbuto)
+
+
+2018-01-31, Version 3.18.1
+==========================
+
+ * update: juggler to version including security fix. (Taranveer Virk)
+
+
+2018-01-29, Version 3.18.0
+==========================
+
+ * fix: preserve datasource name (Kevin Scroggins)
+
+ * Update Copyright Years (Justin Ross)
+
+ * Support options.filter in createChangeStream (Edward Choh)
+
+ * fixup! add top-level dep on eslint-plugin-mocha (Miroslav Bajtoš)
+
+ * Update eslint and eslint-config to latest (Miroslav Bajtoš)
+
+
 2017-12-12, Version 3.17.1
 ==========================
 

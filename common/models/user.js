@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2014,2016. All Rights Reserved.
+// Copyright IBM Corp. 2014,2019. All Rights Reserved.
 // Node module: loopback
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
@@ -232,18 +232,39 @@ module.exports = function(User) {
     var query = self.normalizeCredentials(credentials, realmRequired,
       realmDelimiter);
 
-    if (realmRequired && !query.realm) {
-      var err1 = new Error(g.f('{{realm}} is required'));
-      err1.statusCode = 400;
-      err1.code = 'REALM_REQUIRED';
-      fn(err1);
-      return fn.promise;
+    if (realmRequired) {
+      if (!query.realm) {
+        var err1 = new Error(g.f('{{realm}} is required'));
+        err1.statusCode = 400;
+        err1.code = 'REALM_REQUIRED';
+        fn(err1);
+        return fn.promise;
+      } else if (typeof query.realm !== 'string') {
+        var err5 = new Error(g.f('Invalid realm'));
+        err5.statusCode = 400;
+        err5.code = 'INVALID_REALM';
+        fn(err5);
+        return fn.promise;
+      }
     }
     if (!query.email && !query.username) {
       var err2 = new Error(g.f('{{username}} or {{email}} is required'));
       err2.statusCode = 400;
       err2.code = 'USERNAME_EMAIL_REQUIRED';
       fn(err2);
+      return fn.promise;
+    }
+    if (query.username && typeof query.username !== 'string') {
+      var err3 = new Error(g.f('Invalid username'));
+      err3.statusCode = 400;
+      err3.code = 'INVALID_USERNAME';
+      fn(err3);
+      return fn.promise;
+    } else if (query.email && typeof query.email !== 'string') {
+      var err4 = new Error(g.f('Invalid email'));
+      err4.statusCode = 400;
+      err4.code = 'INVALID_EMAIL';
+      fn(err4);
       return fn.promise;
     }
 
@@ -326,7 +347,7 @@ module.exports = function(User) {
     var err;
     if (!tokenId) {
       err = new Error(g.f('{{accessToken}} is required to logout'));
-      err.status = 401;
+      err.statusCode = 401;
       process.nextTick(fn, err);
       return fn.promise;
     }
@@ -336,7 +357,7 @@ module.exports = function(User) {
         fn(err);
       } else if ('count' in info && info.count === 0) {
         err = new Error(g.f('Could not find {{accessToken}}'));
-        err.status = 401;
+        err.statusCode = 401;
         fn(err);
       } else {
         fn();
@@ -346,6 +367,9 @@ module.exports = function(User) {
   };
 
   User.observe('before delete', function(ctx, next) {
+    // Do nothing when the access control was disabled for this user model.
+    if (!ctx.Model.relations.accessTokens) return next();
+
     var AccessToken = ctx.Model.relations.accessTokens.modelTo;
     var pkName = ctx.Model.definition.idName() || 'id';
     ctx.Model.find({where: ctx.where, fields: [pkName]}, function(err, list) {
@@ -736,22 +760,33 @@ module.exports = function(User) {
       (verifyOptions.protocol === 'https' && verifyOptions.port == '443')
     ) ? '' : ':' + verifyOptions.port;
 
-    var urlPath = joinUrlPath(
-      verifyOptions.restApiRoot,
-      userModel.http.path,
-      userModel.sharedClass.findMethodByName('confirm').http.path
-    );
+    if (!verifyOptions.verifyHref) {
+      const confirmMethod = userModel.sharedClass.findMethodByName('confirm');
+      if (!confirmMethod) {
+        throw new Error(
+          'Cannot build user verification URL, ' +
+          'the default confirm method is not public. ' +
+          'Please provide the URL in verifyOptions.verifyHref.'
+        );
+      }
 
-    verifyOptions.verifyHref = verifyOptions.verifyHref ||
-      verifyOptions.protocol +
-      '://' +
-      verifyOptions.host +
-      displayPort +
-      urlPath +
-      '?' + qs.stringify({
-        uid: '' + verifyOptions.user[pkName],
-        redirect: verifyOptions.redirect,
-      });
+      const urlPath = joinUrlPath(
+        verifyOptions.restApiRoot,
+        userModel.http.path,
+        confirmMethod.http.path
+      );
+
+      verifyOptions.verifyHref =
+        verifyOptions.protocol +
+        '://' +
+        verifyOptions.host +
+        displayPort +
+        urlPath +
+        '?' + qs.stringify({
+          uid: '' + verifyOptions.user[pkName],
+          redirect: verifyOptions.redirect,
+        });
+    }
 
     verifyOptions.to = verifyOptions.to || user.email;
     verifyOptions.subject = verifyOptions.subject || g.f('Thanks for Registering');
@@ -779,7 +814,10 @@ module.exports = function(User) {
 
     // TODO - support more verification types
     function sendEmail(user) {
-      verifyOptions.verifyHref += '&token=' + user.verificationToken;
+      verifyOptions.verifyHref +=
+        verifyOptions.verifyHref.indexOf('?') === -1 ? '?' : '&';
+      verifyOptions.verifyHref += 'token=' + user.verificationToken;
+
       verifyOptions.verificationToken = user.verificationToken;
       verifyOptions.text = verifyOptions.text || g.f('Please verify your email by opening ' +
         'this link in a web browser:\n\t%s', verifyOptions.verifyHref);
@@ -1061,7 +1099,7 @@ module.exports = function(User) {
     this.settings.ttl = this.settings.ttl || DEFAULT_TTL;
 
     UserModel.setter.email = function(value) {
-      if (!UserModel.settings.caseSensitiveEmail) {
+      if (!UserModel.settings.caseSensitiveEmail && typeof value === 'string') {
         this.$email = value.toLowerCase();
       } else {
         this.$email = value;
@@ -1072,7 +1110,7 @@ module.exports = function(User) {
       if (typeof plain !== 'string') {
         return;
       }
-      if (plain.indexOf('$2a$') === 0 && plain.length === 60) {
+      if ((plain.indexOf('$2a$') === 0 || plain.indexOf('$2b$') === 0) && plain.length === 60) {
         // The password is already hashed. It can be the case
         // when the instance is loaded from DB
         this.$password = plain;
@@ -1299,7 +1337,8 @@ module.exports = function(User) {
         // This is a programmer's error, use the default status code 500
         return next(new Error(
           'Invalid use of "options.setPassword". Only "password" can be ' +
-          'changed when using this option.'));
+          'changed when using this option.'
+        ));
       }
 
       return next();
@@ -1311,7 +1350,8 @@ module.exports = function(User) {
 
     const err = new Error(
       'Changing user password via patch/replace API is not allowed. ' +
-      'Use changePassword() or setPassword() instead.');
+      'Use changePassword() or setPassword() instead.'
+    );
     err.statusCode = 401;
     err.code = 'PASSWORD_CHANGE_NOT_ALLOWED';
     next(err);
@@ -1339,7 +1379,14 @@ module.exports = function(User) {
       });
       var emailChanged;
       if (ctx.instance) {
-        emailChanged = ctx.instance.email !== ctx.hookState.originalUserData[0].email;
+        // Check if map does not return an empty array
+        // Fix server crashes when try to PUT a non existent id
+        if (ctx.hookState.originalUserData.length > 0) {
+          emailChanged = ctx.instance.email !== ctx.hookState.originalUserData[0].email;
+        } else {
+          emailChanged = true;
+        }
+
         if (emailChanged && ctx.Model.settings.emailVerificationRequired) {
           ctx.instance.emailVerified = false;
         }
@@ -1365,6 +1412,8 @@ module.exports = function(User) {
     var newPassword = (ctx.instance || ctx.data).password;
 
     if (!newEmail && !newPassword) return next();
+
+    if (ctx.options.preserveAccessTokens) return next();
 
     var userIdsToExpire = ctx.hookState.originalUserData.filter(function(u) {
       return (newEmail && u.email !== newEmail) ||

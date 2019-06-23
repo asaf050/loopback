@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2014,2016. All Rights Reserved.
+// Copyright IBM Corp. 2014,2018. All Rights Reserved.
 // Node module: loopback
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
@@ -332,8 +332,8 @@ module.exports = function(ACL) {
    * @param {AccessRequest} result The resolved access request.
    */
   ACL.checkPermission = function checkPermission(principalType, principalId,
-                                                 model, property, accessType,
-                                                 callback) {
+    model, property, accessType,
+    callback) {
     if (!callback) callback = utils.createPromiseCallback();
     if (principalId !== null && principalId !== undefined && (typeof principalId !== 'string')) {
       principalId = principalId.toString();
@@ -363,15 +363,15 @@ module.exports = function(ACL) {
     var self = this;
     this.find({where: {principalType: principalType, principalId: principalId,
       model: model, property: propertyQuery, accessType: accessTypeQuery}},
-      function(err, dynACLs) {
-        if (err) {
-          return callback(err);
-        }
-        acls = acls.concat(dynACLs);
-        // resolved is an instance of AccessRequest
-        resolved = self.resolvePermission(acls, req);
-        return callback(null, resolved);
-      });
+    function(err, dynACLs) {
+      if (err) {
+        return callback(err);
+      }
+      acls = acls.concat(dynACLs);
+      // resolved is an instance of AccessRequest
+      resolved = self.resolvePermission(acls, req);
+      return callback(null, resolved);
+    });
     return callback.promise;
   };
 
@@ -478,8 +478,15 @@ module.exports = function(ACL) {
     var effectiveACLs = [];
     var staticACLs = self.getStaticACLs(model.modelName, property);
 
-    this.find({where: {model: model.modelName, property: propertyQuery,
-      accessType: accessTypeQuery}}, function(err, acls) {
+    const query = {
+      where: {
+        model: {inq: [model.modelName, ACL.ALL]},
+        property: propertyQuery,
+        accessType: accessTypeQuery,
+      },
+    };
+
+    this.find(query, function(err, acls) {
       if (err) return callback(err);
       var inRoleTasks = [];
 
@@ -600,11 +607,13 @@ module.exports = function(ACL) {
         break;
       case ACL.USER:
         this.userModel.findOne(
-          {where: {or: [{username: id}, {email: id}, {id: id}]}}, cb);
+          {where: {or: [{username: id}, {email: id}, {id: id}]}}, cb
+        );
         break;
       case ACL.APP:
         this.applicationModel.findOne(
-          {where: {or: [{name: id}, {email: id}, {id: id}]}}, cb);
+          {where: {or: [{name: id}, {email: id}, {id: id}]}}, cb
+        );
         break;
       default:
         // try resolving a user model with a name matching the principalType
@@ -612,7 +621,8 @@ module.exports = function(ACL) {
         if (userModel) {
           userModel.findOne(
             {where: {or: [{username: id}, {email: id}, {id: id}]}},
-            cb);
+            cb
+          );
         } else {
           process.nextTick(function() {
             var err = new Error(g.f('Invalid principal type: %s', type));

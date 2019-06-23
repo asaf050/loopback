@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2013,2016. All Rights Reserved.
+// Copyright IBM Corp. 2013,2018. All Rights Reserved.
 // Node module: loopback
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
@@ -17,11 +17,12 @@ var describe = require('./util/describe');
 var expect = require('./helpers/expect');
 var it = require('./util/it');
 var request = require('supertest');
+const sinon = require('sinon');
 
 describe('app', function() {
   var app;
   beforeEach(function() {
-    app = loopback();
+    app = loopback({localRegistry: true, loadBuiltinModels: true});
   });
 
   describe.onServer('.middleware(phase, handler)', function() {
@@ -110,6 +111,28 @@ describe('app', function() {
           myHandler(req, res, next);
         };
         wrappedHandler['__NR_handler'] = myHandler;
+        app.middleware('routes:before', wrappedHandler);
+        var found = app._findLayerByHandler(myHandler);
+        expect(found).to.be.an('object');
+        expect(found).have.property('phase', 'routes:before');
+        executeMiddlewareHandlers(app, function(err) {
+          if (err) return done(err);
+
+          expect(steps).to.eql(['my-handler']);
+
+          done();
+        });
+      });
+
+    it('allows handlers to be wrapped as __appdynamicsProxyInfo__ on express stack',
+      function(done) {
+        var myHandler = namedHandler('my-handler');
+        var wrappedHandler = function(req, res, next) {
+          myHandler(req, res, next);
+        };
+        wrappedHandler['__appdynamicsProxyInfo__'] = {
+          orig: myHandler,
+        };
         app.middleware('routes:before', wrappedHandler);
         var found = app._findLayerByHandler(myHandler);
         expect(found).to.be.an('object');
@@ -222,7 +245,8 @@ describe('app', function() {
           expect(steps).to.eql(['/scope', '/scope/item']);
 
           done();
-        });
+        }
+      );
     });
 
     it('scopes middleware to a regex path', function(done) {
@@ -237,7 +261,8 @@ describe('app', function() {
           expect(steps).to.eql(['/a', '/b']);
 
           done();
-        });
+        }
+      );
     });
 
     it('scopes middleware to a list of scopes', function(done) {
@@ -252,7 +277,8 @@ describe('app', function() {
           expect(steps).to.eql(['/a', '/b', '/scope']);
 
           done();
-        });
+        }
+      );
     });
 
     it('sets req.url to a sub-path', function(done) {
@@ -523,7 +549,7 @@ describe('app', function() {
       });
     });
 
-    it('scopes middleware to a list of scopes', function(done) {
+    it('scopes middleware from config to a list of scopes', function(done) {
       var steps = [];
       app.middlewareFromConfig(
         function factory() {
@@ -536,7 +562,8 @@ describe('app', function() {
         {
           phase: 'initial',
           paths: ['/scope', /^\/(a|b)/],
-        });
+        }
+      );
 
       async.eachSeries(
         ['/', '/a', '/b', '/c', '/scope', '/other'],
@@ -547,7 +574,8 @@ describe('app', function() {
           expect(steps).to.eql(['/a', '/b', '/scope']);
 
           done();
-        });
+        }
+      );
     });
   });
 
@@ -713,17 +741,6 @@ describe('app', function() {
       expect(remoteMethodAddedClass).to.eql(Book.sharedClass);
     });
 
-    it.onServer('updates REST API when a new model is added', function(done) {
-      app.use(loopback.rest());
-      request(app).get('/colors').expect(404, function(err, res) {
-        if (err) return done(err);
-        var Color = PersistedModel.extend('color', {name: String});
-        app.model(Color);
-        Color.attachTo(db);
-        request(app).get('/colors').expect(200, done);
-      });
-    });
-
     it('accepts null dataSource', function(done) {
       app.model(MyTestModel, {dataSource: null});
       expect(MyTestModel.dataSource).to.eql(null);
@@ -763,6 +780,66 @@ describe('app', function() {
     });
   });
 
+  describe('app.deleteModelByName()', () => {
+    let TestModel;
+    beforeEach(setupTestModel);
+
+    it('removes the model from app registries', () => {
+      expect(Object.keys(app.models))
+        .to.contain('test-model')
+        .and.contain('TestModel')
+        .and.contain('testModel');
+      expect(app.models().map(m => m.modelName))
+        .to.contain('test-model');
+
+      app.deleteModelByName('test-model');
+
+      expect(Object.keys(app.models))
+        .to.not.contain('test-model')
+        .and.not.contain('TestModel')
+        .and.not.contain('testModel');
+      expect(app.models().map(m => m.modelName))
+        .to.not.contain('test-model');
+    });
+
+    it('removes the model from juggler registries', () => {
+      expect(Object.keys(app.registry.modelBuilder.models))
+        .to.contain('test-model');
+
+      app.deleteModelByName('test-model');
+
+      expect(Object.keys(app.registry.modelBuilder.models))
+        .to.not.contain('test-model');
+    });
+
+    it('removes the model from remoting registries', () => {
+      expect(Object.keys(app.remotes()._classes))
+        .to.contain('test-model');
+
+      app.deleteModelByName('test-model');
+
+      expect(Object.keys(app.remotes()._classes))
+        .to.not.contain('test-model');
+    });
+
+    it('emits "modelDeleted" event', () => {
+      const spy = sinon.spy();
+      app.on('modelDeleted', spy);
+
+      app.deleteModelByName('test-model');
+
+      sinon.assert.calledWith(spy, TestModel);
+    });
+
+    function setupTestModel() {
+      TestModel = app.registry.createModel({
+        name: 'test-model',
+        base: 'Model',
+      });
+      app.model(TestModel, {dataSource: null});
+    }
+  });
+
   describe('app.models', function() {
     it('is unique per app instance', function() {
       app.dataSource('db', {connector: 'memory'});
@@ -787,7 +864,7 @@ describe('app', function() {
     it('looks up the connector in `app.connectors`', function() {
       app.connector('custom', loopback.Memory);
       app.dataSource('custom', {connector: 'custom'});
-      expect(app.dataSources.custom.name).to.equal(loopback.Memory.name);
+      expect(app.dataSources.custom.name).to.equal('custom');
     });
 
     it('adds data source name to error messages', function() {
@@ -857,17 +934,15 @@ describe('app', function() {
       });
     });
 
-    it('forwards to http.Server.listen when the single arg is not a function',
-      function(done) {
-        var app = loopback();
-        app.set('port', 1);
-        app.listen(0).on('listening', function() {
-          expect(app.get('port'), 'port') .to.not.equal(0).and.not.equal(1);
+    it('forwards to http.Server.listen when the single arg is not a function', function(done) {
+      var app = loopback();
+      app.set('port', 1);
+      app.listen(0).on('listening', function() {
+        expect(app.get('port'), 'port') .to.not.equal(0).and.not.equal(1);
 
-          done();
-        });
-      }
-    );
+        done();
+      });
+    });
 
     it('uses app config when no parameter is supplied', function(done) {
       var app = loopback();
