@@ -1,5 +1,6 @@
 {
   "name": "ACL",
+  "trackChanges": true,
   "properties": {
     "model": {
       "type": "string",

@@ -144,7 +144,8 @@ describe('loopback.token(options)', function() {
       var app = createTestApp(
         this.token,
         {token: {searchDefaultTokenKeys: false}},
-        done);
+        done
+      );
       var agent = request.agent(app);
 
       // Set the token cookie
@@ -306,6 +307,16 @@ describe('loopback.token(options)', function() {
       request(app)
         .get('/users/me')
         .set('authorization', null)
+        .expect(401)
+        .end(done);
+    });
+
+  it('generates a 401 on a current user literal route with empty authToken',
+    function(done) {
+      var app = createTestApp(null, done);
+      request(app)
+        .get('/users/me')
+        .set('authorization', '')
         .expect(401)
         .end(done);
     });
@@ -604,7 +615,8 @@ describe('AccessToken', function() {
           param: function(name) { return this._params[name]; },
           header: function(name) { return this.headers[name]; },
         },
-        opts);
+        opts
+      );
     }
   });
 });

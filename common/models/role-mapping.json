@@ -1,5 +1,6 @@
 {
   "name": "RoleMapping",
+  "trackChanges": true,
   "description": "Map principals to roles",
   "properties": {
     "id": {

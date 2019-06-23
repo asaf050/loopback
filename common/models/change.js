@@ -13,7 +13,7 @@ var PersistedModel = require('../../lib/loopback').PersistedModel;
 var loopback = require('../../lib/loopback');
 var utils = require('../../lib/utils');
 var crypto = require('crypto');
-var CJSON = {stringify: require('canonical-json')};
+var CJSON = { stringify: require('canonical-json') };
 var async = require('async');
 var assert = require('assert');
 var debug = require('debug')('loopback:change');
@@ -36,7 +36,7 @@ var debug = require('debug')('loopback:change');
  * @inherits {PersistedModel}
  */
 
-module.exports = function(Change) {
+module.exports = function (Change) {
   /*!
    * Constants
    */
@@ -56,11 +56,11 @@ module.exports = function(Change) {
    * Setup the extended model.
    */
 
-  Change.setup = function() {
+  Change.setup = function () {
     PersistedModel.setup.call(this);
     var Change = this;
 
-    Change.getter.id = function() {
+    Change.getter.id = function () {
       var hasModel = this.modelName && this.modelId;
       if (!hasModel) return null;
 
@@ -79,15 +79,15 @@ module.exports = function(Change) {
    * @param {Array} changes Changes that were tracked
    */
 
-  Change.rectifyModelChanges = function(modelName, modelIds, callback) {
+  Change.rectifyModelChanges = function (modelName, modelIds, callback) {
     var Change = this;
     var errors = [];
 
     callback = callback || utils.createPromiseCallback();
 
-    var tasks = modelIds.map(function(id) {
-      return function(cb) {
-        Change.findOrCreateChange(modelName, id, function(err, change) {
+    var tasks = modelIds.map(function (id) {
+      return function (cb) {
+        Change.findOrCreateChange(modelName, id, function (err, change) {
           if (err) return next(err);
           change.rectify(next);
         });
@@ -103,18 +103,18 @@ module.exports = function(Change) {
       };
     });
 
-    async.parallel(tasks, function(err) {
+    async.parallel(tasks, function (err) {
       if (err) return callback(err);
       if (errors.length) {
         var desc = errors
-          .map(function(e) {
+          .map(function (e) {
             return '#' + e.modelId + ' - ' + e.toString();
           })
           .join('\n');
 
         var msg = g.f('Cannot rectify %s changes:\n%s', modelName, desc);
         err = new Error(msg);
-        err.details = {errors: errors};
+        err.details = { errors: errors };
         return callback(err);
       }
       callback();
@@ -130,7 +130,7 @@ module.exports = function(Change) {
    * @return {String}
    */
 
-  Change.idForModel = function(modelName, modelId) {
+  Change.idForModel = function (modelName, modelId) {
     return this.hash([modelName, modelId].join('-'));
   };
 
@@ -145,13 +145,13 @@ module.exports = function(Change) {
    * @end
    */
 
-  Change.findOrCreateChange = function(modelName, modelId, callback) {
+  Change.findOrCreateChange = function (modelName, modelId, callback) {
     assert(this.registry.findModel(modelName), modelName + ' does not exist');
     callback = callback || utils.createPromiseCallback();
     var id = this.idForModel(modelName, modelId);
     var Change = this;
 
-    this.findById(id, function(err, change) {
+    this.findById(id, function (err, change) {
       if (err) return callback(err);
       if (change) {
         callback(null, change);
@@ -176,7 +176,7 @@ module.exports = function(Change) {
    * @param {Change} change
    */
 
-  Change.prototype.rectify = function(cb) {
+  Change.prototype.rectify = function (cb) {
     var change = this;
     var currentRev = this.rev;
 
@@ -187,11 +187,11 @@ module.exports = function(Change) {
     const model = this.getModelCtor();
     const id = this.getModelId();
 
-    model.findById(id, function(err, inst) {
+    model.findById(id, function (err, inst) {
       if (err) return cb(err);
 
       if (inst) {
-        inst.fillCustomChangeProperties(change, function() {
+        inst.fillCustomChangeProperties(change, function () {
           const rev = Change.revisionForInst(inst);
           prepareAndDoRectify(rev);
         });
@@ -213,7 +213,7 @@ module.exports = function(Change) {
       // (or even better - a memoized async function to get the cp value)
       // That will enable `rectifyAll` to cache the checkpoint value
       change.constructor.getCheckpointModel().current(
-        function(err, checkpoint) {
+        function (err, checkpoint) {
           if (err) return cb(err);
           doRectify(checkpoint, rev);
         }
@@ -272,11 +272,11 @@ module.exports = function(Change) {
    * @param {String} rev The current revision
    */
 
-  Change.prototype.currentRevision = function(cb) {
+  Change.prototype.currentRevision = function (cb) {
     cb = cb || utils.createPromiseCallback();
     var model = this.getModelCtor();
     var id = this.getModelId();
-    model.findById(id, function(err, inst) {
+    model.findById(id, function (err, inst) {
       if (err) return cb(err);
       if (inst) {
         cb(null, Change.revisionForInst(inst));
@@ -295,7 +295,7 @@ module.exports = function(Change) {
    * @return {String}     The hashed string
    */
 
-  Change.hash = function(str) {
+  Change.hash = function (str) {
     return crypto
       .createHash(Change.settings.hashAlgorithm || 'sha1')
       .update(str)
@@ -308,7 +308,7 @@ module.exports = function(Change) {
    * @return {String}      The revision string
    */
 
-  Change.revisionForInst = function(inst) {
+  Change.revisionForInst = function (inst) {
     assert(inst, 'Change.revisionForInst() requires an instance object.');
     return this.hash(CJSON.stringify(inst));
   };
@@ -324,7 +324,7 @@ module.exports = function(Change) {
    * @return {String} the type of change
    */
 
-  Change.prototype.type = function() {
+  Change.prototype.type = function () {
     if (this.rev && this.prev) {
       return Change.UPDATE;
     }
@@ -343,7 +343,7 @@ module.exports = function(Change) {
    * @return {Boolean}
    */
 
-  Change.prototype.equals = function(change) {
+  Change.prototype.equals = function (change) {
     if (!change) return false;
     var thisRev = this.rev || null;
     var thatRev = change.rev || null;
@@ -356,7 +356,7 @@ module.exports = function(Change) {
    * @return {Boolean}
    */
 
-  Change.prototype.conflictsWith = function(change) {
+  Change.prototype.conflictsWith = function (change) {
     if (!change) return false;
     if (this.equals(change)) return false;
     if (Change.bothDeleted(this, change)) return false;
@@ -371,7 +371,7 @@ module.exports = function(Change) {
    * @return {Boolean}
    */
 
-  Change.bothDeleted = function(a, b) {
+  Change.bothDeleted = function (a, b) {
     return a.type() === Change.DELETE &&
       b.type() === Change.DELETE;
   };
@@ -382,7 +382,7 @@ module.exports = function(Change) {
    * @return {Boolean}
    */
 
-  Change.prototype.isBasedOn = function(change) {
+  Change.prototype.isBasedOn = function (change) {
     return this.prev === change.rev;
   };
 
@@ -416,16 +416,16 @@ module.exports = function(Change) {
    * @param {Object} result See above.
    */
 
-  Change.diff = function(modelName, since, remoteChanges, callback) {
+  Change.diff = function (modelName, since, remoteChanges, callback) {
     callback = callback || utils.createPromiseCallback();
 
     if (!Array.isArray(remoteChanges) || remoteChanges.length === 0) {
-      callback(null, {deltas: [], conflicts: []});
+      callback(null, { deltas: [], conflicts: [] });
       return callback.promise;
     }
     var remoteChangeIndex = {};
     var modelIds = [];
-    remoteChanges.forEach(function(ch) {
+    remoteChanges.forEach(function (ch) {
       modelIds.push(ch.modelId);
       remoteChangeIndex[ch.modelId] = new Change(ch);
     });
@@ -435,19 +435,19 @@ module.exports = function(Change) {
     this.find({
       where: {
         modelName: modelName,
-        modelId: {inq: modelIds},
+        modelId: { inq: modelIds },
       },
-    }, function(err, allLocalChanges) {
+    }, function (err, allLocalChanges) {
       if (err) return callback(err);
       var deltas = [];
       var conflicts = [];
       var localModelIds = [];
 
-      var localChanges = allLocalChanges.filter(function(c) {
+      var localChanges = allLocalChanges.filter(function (c) {
         return c.checkpoint >= since;
       });
 
-      localChanges.forEach(function(localChange) {
+      localChanges.forEach(function (localChange) {
         localChange = new Change(localChange);
         localModelIds.push(localChange.modelId);
         var remoteChange = remoteChangeIndex[localChange.modelId];
@@ -463,11 +463,11 @@ module.exports = function(Change) {
         }
       });
 
-      modelIds.forEach(function(id) {
+      modelIds.forEach(function (id) {
         if (localModelIds.indexOf(id) !== -1) return;
 
         var d = remoteChangeIndex[id];
-        var oldChange = allLocalChanges.filter(function(c) {
+        var oldChange = allLocalChanges.filter(function (c) {
           return c.modelId === id;
         })[0];
 
@@ -493,16 +493,17 @@ module.exports = function(Change) {
    * @param {Function} cb
    */
 
-  Change.rectifyAll = function(cb) {
+  Change.rectifyAll = function (cb) {
     debug('rectify all');
     var Change = this;
     // this should be optimized
-    this.find(function(err, changes) {
+    this.find(function (err, changes) {
       if (err) return cb(err);
       async.each(
         changes,
-        function(c, next) { c.rectify(next); },
-        cb);
+        function (c, next) { c.rectify(next); },
+        cb
+      );
     });
   };
 
@@ -511,7 +512,7 @@ module.exports = function(Change) {
    * @return {Checkpoint}
    */
 
-  Change.getCheckpointModel = function() {
+  Change.getCheckpointModel = function () {
     var checkpointModel = this.Checkpoint;
     if (checkpointModel) return checkpointModel;
     // FIXME(bajtos) This code creates multiple different models with the same
@@ -523,7 +524,7 @@ module.exports = function(Change) {
     return checkpointModel;
   };
 
-  Change.prototype.debug = function() {
+  Change.prototype.debug = function () {
     if (debug.enabled) {
       var args = Array.prototype.slice.call(arguments);
       args[0] = args[0] + ' %s';
@@ -544,11 +545,11 @@ module.exports = function(Change) {
    * @return {Model}
    */
 
-  Change.prototype.getModelCtor = function() {
+  Change.prototype.getModelCtor = function () {
     return this.constructor.settings.trackModel;
   };
 
-  Change.prototype.getModelId = function() {
+  Change.prototype.getModelId = function () {
     // TODO(ritch) get rid of the need to create an instance
     var Model = this.getModelCtor();
     var id = this.modelId;
@@ -557,7 +558,7 @@ module.exports = function(Change) {
     return m.getId();
   };
 
-  Change.prototype.getModel = function(callback) {
+  Change.prototype.getModel = function (callback) {
     var Model = this.constructor.settings.trackModel;
     var id = this.getModelId();
     Model.findById(id, callback);
@@ -593,7 +594,7 @@ module.exports = function(Change) {
    * @param {PersistedModel} target
    */
 
-  Conflict.prototype.models = function(cb) {
+  Conflict.prototype.models = function (cb) {
     var conflict = this;
     var SourceModel = this.SourceModel;
     var TargetModel = this.TargetModel;
@@ -605,7 +606,7 @@ module.exports = function(Change) {
     ], done);
 
     function getSourceModel(cb) {
-      SourceModel.findById(conflict.modelId, function(err, model) {
+      SourceModel.findById(conflict.modelId, function (err, model) {
         if (err) return cb(err);
         source = model;
         cb();
@@ -613,7 +614,7 @@ module.exports = function(Change) {
     }
 
     function getTargetModel(cb) {
-      TargetModel.findById(conflict.modelId, function(err, model) {
+      TargetModel.findById(conflict.modelId, function (err, model) {
         if (err) return cb(err);
         target = model;
         cb();
@@ -635,7 +636,7 @@ module.exports = function(Change) {
    * @param {Change} targetChange
    */
 
-  Conflict.prototype.changes = function(cb) {
+  Conflict.prototype.changes = function (cb) {
     var conflict = this;
     var sourceChange, targetChange;
 
@@ -646,7 +647,7 @@ module.exports = function(Change) {
 
     function getSourceChange(cb) {
       var SourceModel = conflict.SourceModel;
-      SourceModel.findLastChange(conflict.modelId, function(err, change) {
+      SourceModel.findLastChange(conflict.modelId, function (err, change) {
         if (err) return cb(err);
         sourceChange = change;
         cb();
@@ -655,7 +656,7 @@ module.exports = function(Change) {
 
     function getTargetChange(cb) {
       var TargetModel = conflict.TargetModel;
-      TargetModel.findLastChange(conflict.modelId, function(err, change) {
+      TargetModel.findLastChange(conflict.modelId, function (err, change) {
         if (err) return cb(err);
         targetChange = change;
         cb();
@@ -682,17 +683,19 @@ module.exports = function(Change) {
    * @param {Error} err
    */
 
-  Conflict.prototype.resolve = function(cb) {
+  Conflict.prototype.resolve = function (cb) {
     var conflict = this;
     conflict.TargetModel.findLastChange(
       this.modelId,
-      function(err, targetChange) {
+      function (err, targetChange) {
         if (err) return cb(err);
         conflict.SourceModel.updateLastChange(
           conflict.modelId,
-          {prev: targetChange.rev},
-          cb);
-      });
+          { prev: targetChange.rev },
+          cb
+        );
+      }
+    );
   };
 
   /**
@@ -701,8 +704,8 @@ module.exports = function(Change) {
    * @callback {Function} callback
    * @param {Error} err
    */
-  Conflict.prototype.resolveUsingSource = function(cb) {
-    this.resolve(function(err) {
+  Conflict.prototype.resolveUsingSource = function (cb) {
+    this.resolve(function (err) {
       // don't forward any cb arguments from resolve()
       cb(err);
     });
@@ -714,17 +717,18 @@ module.exports = function(Change) {
    * @callback {Function} callback
    * @param {Error} err
    */
-  Conflict.prototype.resolveUsingTarget = function(cb) {
+  Conflict.prototype.resolveUsingTarget = function (cb) {
     var conflict = this;
 
-    conflict.models(function(err, source, target) {
+    conflict.models(function (err, source, target) {
       if (err) return done(err);
       if (target === null) {
         return conflict.SourceModel.deleteById(conflict.modelId, done);
       }
       var inst = new conflict.SourceModel(
         target.toObject(),
-        {persisted: true});
+        { persisted: true }
+      );
       inst.save(done);
     });
 
@@ -746,7 +750,7 @@ module.exports = function(Change) {
    *
    * @returns {Conflict} A new Conflict instance.
    */
-  Conflict.prototype.swapParties = function() {
+  Conflict.prototype.swapParties = function () {
     var Ctor = this.constructor;
     return new Ctor(this.modelId, this.TargetModel, this.SourceModel);
   };
@@ -760,17 +764,17 @@ module.exports = function(Change) {
    * @param {Error} err
    */
 
-  Conflict.prototype.resolveManually = function(data, cb) {
+  Conflict.prototype.resolveManually = function (data, cb) {
     var conflict = this;
     if (!data) {
       return conflict.SourceModel.deleteById(conflict.modelId, done);
     }
 
-    conflict.models(function(err, source, target) {
+    conflict.models(function (err, source, target) {
       if (err) return done(err);
       var inst = source || new conflict.SourceModel(target);
       inst.setAttributes(data);
-      inst.save(function(err) {
+      inst.save(function (err) {
         if (err) return done(err);
         conflict.resolve(done);
       });
@@ -796,10 +800,9 @@ module.exports = function(Change) {
    * @param {String} type The conflict type.
    */
 
-  Conflict.prototype.type = function(cb) {
+  Conflict.prototype.type = function (cb) {
     var conflict = this;
-    this.changes(function(err, sourceChange, targetChange) {
-      
+    this.changes(function (err, sourceChange, targetChange) {
       if (err) return cb(err)
 
       if (sourceChange && targetChange) {
@@ -814,8 +817,6 @@ module.exports = function(Change) {
       }
 
       return cb(null, 'unknown')
-     
-     
     });
   };
 };

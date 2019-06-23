@@ -15,20 +15,13 @@ var supertest = require('supertest');
 var Role = loopback.Role;
 var RoleMapping = loopback.RoleMapping;
 var User = loopback.User;
-var testModel;
+var async = require('async');
 
 // Speed up the password hashing algorithm for tests
 User.settings.saltWorkFactor = 4;
 
-function checkResult(err, result) {
-  // console.log(err, result);
-  assert(!err);
-}
-
 var ds = null;
-before(function() {
-  ds = loopback.createDataSource({connector: loopback.Memory});
-});
+var testModel;
 
 describe('ACL model', function() {
   it('provides DEFAULT_SCOPE constant', () => {
@@ -37,18 +30,9 @@ describe('ACL model', function() {
 });
 
 describe('security scopes', function() {
-  beforeEach(function() {
-    var ds = this.ds = loopback.createDataSource({connector: loopback.Memory});
-    testModel = loopback.PersistedModel.extend('testModel');
-    ACL.attachTo(ds);
-    Role.attachTo(ds);
-    RoleMapping.attachTo(ds);
-    User.attachTo(ds);
-    Scope.attachTo(ds);
-    testModel.attachTo(ds);
-  });
+  beforeEach(setupTestModels);
 
-  it('should allow access to models for the given scope by wildcard', function() {
+  it('should allow access to models for the given scope by wildcard', function(done) {
     Scope.create({name: 'userScope', description: 'access user information'},
       function(err, scope) {
         ACL.create({
@@ -56,14 +40,19 @@ describe('security scopes', function() {
           model: 'User', property: ACL.ALL,
           accessType: ACL.ALL, permission: ACL.ALLOW,
         }, function(err, resource) {
-          Scope.checkPermission('userScope', 'User', ACL.ALL, ACL.ALL, checkResult);
-          Scope.checkPermission('userScope', 'User', 'name', ACL.ALL, checkResult);
-          Scope.checkPermission('userScope', 'User', 'name', ACL.READ, checkResult);
+          async.parallel([
+            cb => Scope.checkPermission('userScope', 'User', ACL.ALL, ACL.ALL, cb),
+            cb => Scope.checkPermission('userScope', 'User', 'name', ACL.ALL, cb),
+            cb => Scope.checkPermission('userScope', 'User', 'name', ACL.READ, cb),
+          ], (err) => {
+            assert.ifError(err);
+            done();
+          });
         });
       });
   });
 
-  it('should allow access to models for the given scope', function() {
+  it('should allow access to models for the given scope', function(done) {
     Scope.create({name: 'testModelScope', description: 'access testModel information'},
       function(err, scope) {
         ACL.create({
@@ -75,23 +64,21 @@ describe('security scopes', function() {
             model: 'testModel', property: 'name',
             accessType: ACL.WRITE, permission: ACL.DENY,
           }, function(err, resource) {
-          // console.log(resource);
-            Scope.checkPermission('testModelScope', 'testModel', ACL.ALL, ACL.ALL,
-              function(err, perm) {
-                assert(perm.permission === ACL.DENY); // because name.WRITE == DENY
-              });
-            Scope.checkPermission('testModelScope', 'testModel', 'name', ACL.ALL,
-              function(err, perm) {
-                assert(perm.permission === ACL.DENY); // because name.WRITE == DENY
-              });
-            Scope.checkPermission('testModelScope', 'testModel', 'name', ACL.READ,
-              function(err, perm) {
-                assert(perm.permission === ACL.ALLOW);
-              });
-            Scope.checkPermission('testModelScope', 'testModel', 'name', ACL.WRITE,
-              function(err, perm) {
-                assert(perm.permission === ACL.DENY);
-              });
+            async.parallel([
+              cb => Scope.checkPermission('testModelScope', 'testModel', ACL.ALL, ACL.ALL, cb),
+              cb => Scope.checkPermission('testModelScope', 'testModel', 'name', ACL.ALL, cb),
+              cb => Scope.checkPermission('testModelScope', 'testModel', 'name', ACL.READ, cb),
+              cb => Scope.checkPermission('testModelScope', 'testModel', 'name', ACL.WRITE, cb),
+            ], (err, perms) => {
+              if (err) return done(err);
+              assert.deepEqual(perms.map(p => p.permission), [
+                ACL.DENY,
+                ACL.DENY,
+                ACL.ALLOW,
+                ACL.DENY,
+              ]);
+              done();
+            });
           });
         });
       });
@@ -99,6 +86,8 @@ describe('security scopes', function() {
 });
 
 describe('security ACLs', function() {
+  beforeEach(setupTestModels);
+
   it('supports checkPermission() returning a promise', function() {
     return ACL.create({
       principalType: ACL.USER,
@@ -114,6 +103,44 @@ describe('security ACLs', function() {
       .then(function(access) {
         assert(access.permission === ACL.ALLOW);
       });
+  });
+
+  it('supports ACL rules with a wildcard for models', function() {
+    const A_USER_ID = 'a-test-user';
+
+    // By default, access is allowed to all users
+    return assertPermission(ACL.ALLOW, 'initial state')
+      // An ACL rule applying to all models denies access to everybody
+      .then(() => ACL.create({
+        model: '*',
+        property: '*',
+        accessType: '*',
+        principalType: 'ROLE',
+        principalId: '$everyone',
+        permission: 'DENY',
+      }))
+      .then(() => assertPermission(ACL.DENY, 'all denied'))
+      // A rule for a specific model overrides the rule matching all models
+      .then(() => ACL.create({
+        model: testModel.modelName,
+        property: '*',
+        accessType: '*',
+        principalType: ACL.USER,
+        principalId: A_USER_ID,
+        permission: ACL.ALLOW,
+      }))
+      .then(() => assertPermission(ACL.ALLOW, 'only a single model allowed'));
+
+    function assertPermission(expectedPermission, msg) {
+      return ACL.checkAccessForContext({
+        principals: [{type: ACL.USER, id: A_USER_ID}],
+        model: testModel.modelName,
+        accessType: ACL.ALL,
+      }).then(accessContext => {
+        const actual = accessContext.isAllowed() ? ACL.ALLOW : ACL.DENY;
+        expect(actual, msg).to.equal(expectedPermission);
+      });
+    }
   });
 
   it('supports checkAccessForContext() returning a promise', function() {
@@ -221,7 +248,7 @@ describe('security ACLs', function() {
       methodNames: []});
   });
 
-  it('should allow access to models for the given principal by wildcard', function() {
+  it('should allow access to models for the given principal by wildcard', function(done) {
     // jscs:disable validateIndentation
     ACL.create({
       principalType: ACL.USER, principalId: 'u001', model: 'User', property: ACL.ALL,
@@ -231,18 +258,22 @@ describe('security ACLs', function() {
         principalType: ACL.USER, principalId: 'u001', model: 'User', property: ACL.ALL,
         accessType: ACL.READ, permission: ACL.DENY,
       }, function(err, acl) {
-        ACL.checkPermission(ACL.USER, 'u001', 'User', 'name', ACL.READ, function(err, perm) {
-          assert(perm.permission === ACL.DENY);
-        });
-
-        ACL.checkPermission(ACL.USER, 'u001', 'User', 'name', ACL.ALL, function(err, perm) {
-          assert(perm.permission === ACL.DENY);
+        async.parallel([
+          cb => ACL.checkPermission(ACL.USER, 'u001', 'User', 'name', ACL.READ, cb),
+          cb => ACL.checkPermission(ACL.USER, 'u001', 'User', 'name', ACL.ALL, cb),
+        ], (err, perms) => {
+          if (err) return done(err);
+          assert.deepEqual(perms.map(p => p.permission), [
+            ACL.DENY,
+            ACL.DENY,
+          ]);
+          done();
         });
       });
     });
   });
 
-  it('should allow access to models by exception', function() {
+  it('should allow access to models by exception', function(done) {
     ACL.create({
       principalType: ACL.USER, principalId: 'u001', model: 'testModel', property: ACL.ALL,
       accessType: ACL.ALL, permission: ACL.DENY,
@@ -255,41 +286,31 @@ describe('security ACLs', function() {
           principalType: ACL.USER, principalId: 'u002', model: 'testModel', property: ACL.ALL,
           accessType: ACL.EXECUTE, permission: ACL.ALLOW,
         }, function(err, acl) {
-          ACL.checkPermission(ACL.USER, 'u001', 'testModel', 'name', ACL.READ,
-            function(err, perm) {
-              assert(perm.permission === ACL.ALLOW);
-            });
-
-          ACL.checkPermission(ACL.USER, 'u001', 'testModel', ACL.ALL, ACL.READ,
-            function(err, perm) {
-              assert(perm.permission === ACL.ALLOW);
-            });
-
-          ACL.checkPermission(ACL.USER, 'u001', 'testModel', 'name', ACL.WRITE,
-            function(err, perm) {
-              assert(perm.permission === ACL.DENY);
-            });
-
-          ACL.checkPermission(ACL.USER, 'u001', 'testModel', 'name', ACL.ALL,
-            function(err, perm) {
-              assert(perm.permission === ACL.DENY);
-            });
-
-          ACL.checkPermission(ACL.USER, 'u002', 'testModel', 'name', ACL.WRITE,
-            function(err, perm) {
-              assert(perm.permission === ACL.ALLOW);
-            });
-
-          ACL.checkPermission(ACL.USER, 'u002', 'testModel', 'name', ACL.READ,
-            function(err, perm) {
-              assert(perm.permission === ACL.ALLOW);
-            });
+          async.parallel([
+            cb => ACL.checkPermission(ACL.USER, 'u001', 'testModel', 'name', ACL.READ, cb),
+            cb => ACL.checkPermission(ACL.USER, 'u001', 'testModel', ACL.ALL, ACL.READ, cb),
+            cb => ACL.checkPermission(ACL.USER, 'u001', 'testModel', 'name', ACL.WRITE, cb),
+            cb => ACL.checkPermission(ACL.USER, 'u001', 'testModel', 'name', ACL.ALL, cb),
+            cb => ACL.checkPermission(ACL.USER, 'u002', 'testModel', 'name', ACL.WRITE, cb),
+            cb => ACL.checkPermission(ACL.USER, 'u002', 'testModel', 'name', ACL.READ, cb),
+          ], (err, perms) => {
+            if (err) return done(err);
+            assert.deepEqual(perms.map(p => p.permission), [
+              ACL.ALLOW,
+              ACL.ALLOW,
+              ACL.DENY,
+              ACL.DENY,
+              ACL.ALLOW,
+              ACL.ALLOW,
+            ]);
+            done();
+          });
         });
       });
     });
   });
 
-  it('should honor defaultPermission from the model', function() {
+  it('should honor defaultPermission from the model', function(done) {
     var Customer = ds.createModel('Customer', {
       name: {
         type: String,
@@ -310,21 +331,22 @@ describe('security ACLs', function() {
     // ACL default permission is to DENY for model Customer
     Customer.settings.defaultPermission = ACL.DENY;
 
-    ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.WRITE,
-      function(err, perm) {
-        assert(perm.permission === ACL.DENY);
-      });
-
-    ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.READ, function(err, perm) {
-      assert(perm.permission === ACL.ALLOW);
-    });
-
-    ACL.checkPermission(ACL.USER, 'u002', 'Customer', 'name', ACL.WRITE, function(err, perm) {
-      assert(perm.permission === ACL.DENY);
+    async.parallel([
+      cb => ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.WRITE, cb),
+      cb => ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.READ, cb),
+      cb => ACL.checkPermission(ACL.USER, 'u002', 'Customer', 'name', ACL.WRITE, cb),
+    ], (err, perms) => {
+      if (err) return done(err);
+      assert.deepEqual(perms.map(p => p.permission), [
+        ACL.DENY,
+        ACL.ALLOW,
+        ACL.DENY,
+      ]);
+      done();
     });
   });
 
-  it('should honor static ACLs from the model', function() {
+  it('should honor static ACLs from the model', function(done) {
     var Customer = ds.createModel('Customer', {
       name: {
         type: String,
@@ -352,30 +374,23 @@ describe('security ACLs', function() {
      ];
      */
 
-    ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.WRITE,
-      function(err, perm) {
-        assert(perm.permission === ACL.DENY);
-      });
-
-    ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.READ,
-      function(err, perm) {
-        assert(perm.permission === ACL.ALLOW);
-      });
-
-    ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.ALL,
-      function(err, perm) {
-        assert(perm.permission === ACL.ALLOW);
-      });
-
-    ACL.checkPermission(ACL.USER, 'u002', 'Customer', 'name', ACL.READ,
-      function(err, perm) {
-        assert(perm.permission === ACL.ALLOW);
-      });
-
-    ACL.checkPermission(ACL.USER, 'u003', 'Customer', 'name', ACL.WRITE,
-      function(err, perm) {
-        assert(perm.permission === ACL.DENY);
-      });
+    async.parallel([
+      cb => ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.WRITE, cb),
+      cb => ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.READ, cb),
+      cb => ACL.checkPermission(ACL.USER, 'u001', 'Customer', 'name', ACL.ALL, cb),
+      cb => ACL.checkPermission(ACL.USER, 'u002', 'Customer', 'name', ACL.READ, cb),
+      cb => ACL.checkPermission(ACL.USER, 'u003', 'Customer', 'name', ACL.WRITE, cb),
+    ], (err, perms) => {
+      if (err) return done(err);
+      assert.deepEqual(perms.map(p => p.permission), [
+        ACL.DENY,
+        ACL.ALLOW,
+        ACL.ALLOW,
+        ACL.ALLOW,
+        ACL.DENY,
+      ]);
+      done();
+    });
   });
 
   it('should filter static ACLs by model/property', function() {
@@ -411,8 +426,7 @@ describe('security ACLs', function() {
     assert(staticACLs[0].property === 'findById');
   });
 
-  it('should check access against LDL, ACL, and Role', function() {
-    // var log = console.log;
+  it('should check access against LDL, ACL, and Role', function(done) {
     var log = function() {};
 
     // Create
@@ -461,27 +475,35 @@ describe('security ACLs', function() {
               }, function(err, acl) {
                 log('ACL 2: ', acl.toObject());
 
-                ACL.checkAccessForContext({
-                  principals: [
-                    {type: ACL.USER, id: userId},
-                  ],
-                  model: 'Customer',
-                  property: 'name',
-                  accessType: ACL.READ,
-                }, function(err, access) {
-                  assert(!err && access.permission === ACL.ALLOW);
-                });
-
-                ACL.checkAccessForContext({
-                  principals: [
-                    {type: ACL.ROLE, id: Role.EVERYONE},
-                  ],
-                  model: 'Customer',
-                  property: 'name',
-                  accessType: ACL.READ,
-                }, function(err, access) {
-                  assert(!err && access.permission === ACL.DENY);
-                });
+                async.parallel([
+                  cb => {
+                    ACL.checkAccessForContext({
+                      principals: [
+                        {type: ACL.USER, id: userId},
+                      ],
+                      model: 'Customer',
+                      property: 'name',
+                      accessType: ACL.READ,
+                    }, function(err, access) {
+                      assert.ifError(err);
+                      assert.equal(access.permission, ACL.ALLOW);
+                      cb();
+                    });
+                  },
+                  cb => {
+                    ACL.checkAccessForContext({
+                      principals: [
+                        {type: ACL.ROLE, id: Role.EVERYONE},
+                      ],
+                      model: 'Customer',
+                      property: 'name',
+                      accessType: ACL.READ,
+                    }, function(err, access) {
+                      assert.ifError(err);
+                      assert.equal(access.permission, ACL.DENY);
+                      cb();
+                    });
+                  }], done);
               });
             });
         });
@@ -604,6 +626,9 @@ describe('authorized roles propagation in RemotingContext', function() {
     app.enableAuth({dataSource: 'db'});
     models = app.models;
 
+    // Speed up the password hashing algorithm for tests
+    models.User.settings.saltWorkFactor = 4;
+
     // creating a custom model
     const MyTestModel = app.registry.createModel('MyTestModel');
     app.model(MyTestModel, {dataSource: 'db'});
@@ -642,7 +667,7 @@ describe('authorized roles propagation in RemotingContext', function() {
       });
     });
     return Promise.all(acls);
-  };
+  }
 
   function makeAuthorizedHttpRequestOnMyTestModel() {
     return request.get('/MyTestModels')
@@ -650,3 +675,14 @@ describe('authorized roles propagation in RemotingContext', function() {
       .expect(200);
   }
 });
+
+function setupTestModels() {
+  ds = this.ds = loopback.createDataSource({connector: loopback.Memory});
+  testModel = loopback.PersistedModel.extend('testModel');
+  ACL.attachTo(ds);
+  Role.attachTo(ds);
+  RoleMapping.attachTo(ds);
+  User.attachTo(ds);
+  Scope.attachTo(ds);
+  testModel.attachTo(ds);
+}

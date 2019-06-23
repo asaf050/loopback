@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2015,2018. All Rights Reserved.
+// Copyright IBM Corp. 2015,2019. All Rights Reserved.
 // Node module: loopback
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
@@ -60,6 +60,39 @@ describe('users - integration', function() {
           accessToken = res.body.id;
 
           done();
+        });
+    });
+
+    it('returns error when replacing user that does not exist', function() {
+      const credentials = {email: 'temp@example.com', password: 'pass'};
+      const User = app.models.User;
+      let user;
+
+      let hookEnabled = true;
+      User.beforeRemote('replaceOrCreate', (ctx, unused, next) => {
+        // don't affect subsequent tests!
+        if (!hookEnabled) return;
+        hookEnabled = false;
+
+        // Delete the user *AFTER* the PUT request was authorized
+        // but *BEFORE* replaceOrCreate is invoked
+        User.deleteById(user.id, next);
+      });
+
+      return User.create(credentials)
+        .then(u => {
+          user = u;
+          return User.login(credentials);
+        })
+        .then(token => {
+          return this.put('/api/users')
+            .set('Authorization', token.id)
+            .send({
+              id: user.id,
+              email: 'x@x.com',
+              password: 'x',
+            })
+            .expect(404);
         });
     });
 

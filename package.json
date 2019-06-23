@@ -1,6 +1,6 @@
 {
   "name": "loopback",
-  "version": "3.21.0",
+  "version": "3.26.0",
   "description": "LoopBack: Open Source Framework for Node.js",
   "homepage": "http://loopback.io",
   "keywords": [
@@ -34,7 +34,7 @@
     "test": "nyc grunt mocha-and-karma"
   },
   "engines": {
-    "node": ">=6"
+    "node": ">=8"
   },
   "dependencies": {
     "async": "^2.0.1",
@@ -48,8 +48,8 @@
     "express": "^4.14.0",
     "inflection": "^1.6.0",
     "isemail": "^2.2.1",
-    "loopback-connector-remote": "^3.0.0",
-    "loopback-datasource-juggler": "^3.18.0",
+    "loopback-connector-remote": "git+https://github.com/asaf050/loopback-connector-remote.git",
+    "loopback-datasource-juggler": "^3.28.0",
     "loopback-filters": "^1.0.0",
     "loopback-phase": "^3.0.0",
     "nodemailer": "^4.0.1",
@@ -60,7 +60,7 @@
     "strong-globalize": "^4.1.1",
     "strong-remoting": "^3.11.0",
     "uid2": "0.0.3",
-    "underscore.string": "^3.0.3"
+    "underscore.string": "^3.3.5"
   },
   "devDependencies": {
     "babel-preset-es2015": "^6.22.0",
@@ -68,39 +68,38 @@
     "browserify": "^13.1.0",
     "chai": "^3.5.0",
     "cookie-parser": "^1.3.4",
-    "coveralls": "^2.11.15",
+    "coveralls": "^3.0.2",
     "dirty-chai": "^1.2.2",
-    "eslint": "^4.18.2",
-    "eslint-config-loopback": "^10.0.0",
-    "eslint-plugin-mocha": "^4.11.0",
+    "eslint": "^5.3.0",
+    "eslint-config-loopback": "^12.0.0",
+    "eslint-plugin-mocha": "^5.1.0",
     "express-session": "^1.14.0",
     "grunt": "^1.0.1",
     "grunt-browserify": "^5.0.0",
     "grunt-cli": "^1.2.0",
-    "grunt-contrib-uglify": "^2.0.0",
+    "grunt-contrib-uglify": "^3.4.0",
     "grunt-contrib-watch": "^1.0.0",
-    "grunt-eslint": "^20.1.0",
-    "grunt-karma": "^2.0.0",
-    "grunt-mocha-test": "^0.12.7",
-    "karma": "^1.1.2",
-    "karma-browserify": "^5.1.1",
-    "karma-chrome-launcher": "^1.0.1",
+    "grunt-eslint": "^21.0.0",
+    "grunt-karma": "^3.0.2",
+    "grunt-mocha-test": "^0.13.3",
+    "grunt-run": "^0.8.1",
+    "karma": "^4.1.0",
+    "karma-browserify": "^6.0.0",
+    "karma-chrome-launcher": "^2.2.0",
     "karma-es6-shim": "^1.0.0",
     "karma-firefox-launcher": "^1.0.0",
     "karma-html2js-preprocessor": "^1.0.0",
-    "karma-junit-reporter": "~1.0.0",
+    "karma-junit-reporter": "^1.2.0",
     "karma-mocha": "^1.1.1",
-    "karma-phantomjs-launcher": "^1.0.0",
     "karma-script-launcher": "^1.0.0",
     "loopback-boot": "^2.7.0",
     "loopback-context": "^1.0.0",
-    "mocha": "^3.0.0",
-    "nyc": "^10.1.2",
-    "phantomjs-prebuilt": "^2.1.7",
-    "sinon": "^1.13.0",
-    "sinon-chai": "^2.8.0",
+    "mocha": "^5.2.0",
+    "nyc": "^14.1.1",
+    "sinon": "^6.1.4",
+    "sinon-chai": "^3.2.0",
     "strong-error-handler": "^3.0.0",
-    "strong-task-emitter": "^0.0.6",
+    "strong-task-emitter": "^0.0.8",
     "supertest": "^3.0.0"
   },
   "repository": {
@@ -122,5 +121,13 @@
     }
   },
   "copyright.owner": "IBM Corp.",
-  "license": "MIT"
+  "license": "MIT",
+  "author": "IBM Corp.",
+  "ci": {
+    "downstreamIgnoreList": [
+      "bluemix-service-broker",
+      "gateway-director-bluemix",
+      "plan-manager"
+    ]
+  }
 }

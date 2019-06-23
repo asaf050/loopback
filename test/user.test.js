@@ -147,7 +147,8 @@ describe('User', function() {
             expect(err.statusCode).to.equal(422);
             expect(err.details.context).to.equal(User.modelName);
             expect(err.details.codes.email).to.deep.equal(['presence']);
-          });
+          }
+        );
     });
 
     it('fails when the required email is missing (case-sensitivity off)', () => {
@@ -160,7 +161,8 @@ describe('User', function() {
             expect(err.statusCode).to.equal(422);
             expect(err.details.context).to.equal(User.modelName);
             expect(err.details.codes.email).to.deep.equal(['presence']);
-          });
+          }
+        );
     });
 
     // will change in future versions where password will be optional by default
@@ -547,7 +549,8 @@ describe('User', function() {
               code: 'PASSWORD_TOO_LONG',
               statusCode: 422,
             });
-          });
+          }
+        );
     });
 
     it('rejects setPassword when new password is longer than 72 chars', function() {
@@ -566,7 +569,8 @@ describe('User', function() {
               code: 'PASSWORD_TOO_LONG',
               statusCode: 422,
             });
-          });
+          }
+        );
     });
   });
 
@@ -643,6 +647,37 @@ describe('User', function() {
     it('Try to login with invalid email case', function(done) {
       User.login(validMixedCaseEmailCredentials, function(err, accessToken) {
         assert(err);
+
+        done();
+      });
+    });
+
+    it('should not allow queries in email field', function(done) {
+      User.login({email: {'neq': 'x'}, password: 'x'}, function(err, accessToken) {
+        assert(err);
+        assert.equal(err.code, 'INVALID_EMAIL');
+        assert(!accessToken);
+
+        done();
+      });
+    });
+
+    it('should not allow queries in username field', function(done) {
+      User.login({username: {'neq': 'x'}, password: 'x'}, function(err, accessToken) {
+        assert(err);
+        assert.equal(err.code, 'INVALID_USERNAME');
+        assert(!accessToken);
+
+        done();
+      });
+    });
+
+    it('should not allow queries in realm field', function(done) {
+      User.settings.realmRequired = true;
+      User.login({username: 'x', password: 'x', realm: {'neq': 'x'}}, function(err, accessToken) {
+        assert(err);
+        assert.equal(err.code, 'INVALID_REALM');
+        assert(!accessToken);
 
         done();
       });
@@ -1463,7 +1498,8 @@ describe('User', function() {
             code: 'INVALID_PASSWORD',
             statusCode: 400,
           });
-        });
+        }
+      );
     });
 
     it('fails with 401 for unknown user id', () => {
@@ -1478,7 +1514,8 @@ describe('User', function() {
             code: 'USER_NOT_FOUND',
             statusCode: 401,
           });
-        });
+        }
+      );
     });
 
     it('forwards the "options" argument', () => {
@@ -1565,7 +1602,8 @@ describe('User', function() {
             code: 'USER_NOT_FOUND',
             statusCode: 401,
           });
-        });
+        }
+      );
     });
 
     it('forwards the "options" argument', () => {
@@ -2601,7 +2639,8 @@ describe('User', function() {
         function(err, userInstance) {
           if (err) return done(err);
           assertNoAccessTokens(done);
-        });
+        }
+      );
     });
 
     it('invalidates sessions after `replaceAttributes`', function(done) {
@@ -2718,7 +2757,8 @@ describe('User', function() {
               if (err) return next(err);
               userPartial = partialInstance;
               next();
-            });
+            }
+          );
         },
         function loginPartiallUser(next) {
           User.login({email: 'partial@example.com', password: 'pass1'}, function(err, ats) {
@@ -2733,7 +2773,8 @@ describe('User', function() {
             function(err, info) {
               if (err) return next(err);
               next();
-            });
+            }
+          );
         },
         function verifyTokensOfPartialUser(next) {
           AccessToken.find({where: {userId: userPartial.pk}}, function(err, tokens1) {
@@ -2743,6 +2784,17 @@ describe('User', function() {
           });
         },
       ], done);
+    });
+
+    it('keeps sessions sessions when preserveAccessTokens is passed in options', function(done) {
+      user.updateAttributes(
+        {email: 'invalidateAccessTokens@example.com'},
+        {preserveAccessTokens: true},
+        function(err, userInstance) {
+          if (err) return done(err);
+          assertPreservedTokens(done);
+        }
+      );
     });
 
     it('preserves other users\' sessions if their email is  untouched', function(done) {
@@ -2777,8 +2829,10 @@ describe('User', function() {
                       if (err) return next(err);
                       next();
                     });
-                });
-            });
+                }
+              );
+            }
+          );
         },
         function(next) {
           user2.updateAttribute('email', 'user2Update@b.com', function(err, userInstance) {
@@ -2816,7 +2870,8 @@ describe('User', function() {
               if (err) return next(err);
               userSpecial = specialInstance;
               next();
-            });
+            }
+          );
         },
         function loginSpecialUser(next) {
           User.login({email: 'special@example.com', password: 'pass1'}, function(err, ats) {
@@ -2830,7 +2885,8 @@ describe('User', function() {
             {email: 'superspecial@example.com'}, function(err, info) {
               if (err) return next(err);
               next();
-            });
+            }
+          );
         },
         function verifyTokensOfSpecialUser(next) {
           AccessToken.find({where: {userId: userSpecial.pk}}, function(err, tokens1) {
@@ -2975,7 +3031,7 @@ describe('User', function() {
         expect(actualIds).to.eql(expectedIds);
         done();
       });
-    };
+    }
 
     function assertNoAccessTokens(done) {
       AccessToken.find({where: {userId: user.pk}}, function(err, tokens) {

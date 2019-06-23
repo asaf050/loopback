@@ -124,6 +124,28 @@ describe('app', function() {
         });
       });
 
+    it('allows handlers to be wrapped as __appdynamicsProxyInfo__ on express stack',
+      function(done) {
+        var myHandler = namedHandler('my-handler');
+        var wrappedHandler = function(req, res, next) {
+          myHandler(req, res, next);
+        };
+        wrappedHandler['__appdynamicsProxyInfo__'] = {
+          orig: myHandler,
+        };
+        app.middleware('routes:before', wrappedHandler);
+        var found = app._findLayerByHandler(myHandler);
+        expect(found).to.be.an('object');
+        expect(found).have.property('phase', 'routes:before');
+        executeMiddlewareHandlers(app, function(err) {
+          if (err) return done(err);
+
+          expect(steps).to.eql(['my-handler']);
+
+          done();
+        });
+      });
+
     it('allows handlers to be wrapped as a property on express stack',
       function(done) {
         var myHandler = namedHandler('my-handler');
@@ -223,7 +245,8 @@ describe('app', function() {
           expect(steps).to.eql(['/scope', '/scope/item']);
 
           done();
-        });
+        }
+      );
     });
 
     it('scopes middleware to a regex path', function(done) {
@@ -238,7 +261,8 @@ describe('app', function() {
           expect(steps).to.eql(['/a', '/b']);
 
           done();
-        });
+        }
+      );
     });
 
     it('scopes middleware to a list of scopes', function(done) {
@@ -253,7 +277,8 @@ describe('app', function() {
           expect(steps).to.eql(['/a', '/b', '/scope']);
 
           done();
-        });
+        }
+      );
     });
 
     it('sets req.url to a sub-path', function(done) {
@@ -537,7 +562,8 @@ describe('app', function() {
         {
           phase: 'initial',
           paths: ['/scope', /^\/(a|b)/],
-        });
+        }
+      );
 
       async.eachSeries(
         ['/', '/a', '/b', '/c', '/scope', '/other'],
@@ -548,7 +574,8 @@ describe('app', function() {
           expect(steps).to.eql(['/a', '/b', '/scope']);
 
           done();
-        });
+        }
+      );
     });
   });
 
@@ -712,17 +739,6 @@ describe('app', function() {
       Book.nestRemoting('pages');
       expect(remoteMethodAddedClass).to.exist();
       expect(remoteMethodAddedClass).to.eql(Book.sharedClass);
-    });
-
-    it.onServer('updates REST API when a new model is added', function(done) {
-      app.use(loopback.rest());
-      request(app).get('/colors').expect(404, function(err, res) {
-        if (err) return done(err);
-        var Color = PersistedModel.extend('color', {name: String});
-        app.model(Color);
-        Color.attachTo(db);
-        request(app).get('/colors').expect(200, done);
-      });
     });
 
     it('accepts null dataSource', function(done) {
@@ -918,17 +934,15 @@ describe('app', function() {
       });
     });
 
-    it('forwards to http.Server.listen when the single arg is not a function',
-      function(done) {
-        var app = loopback();
-        app.set('port', 1);
-        app.listen(0).on('listening', function() {
-          expect(app.get('port'), 'port') .to.not.equal(0).and.not.equal(1);
+    it('forwards to http.Server.listen when the single arg is not a function', function(done) {
+      var app = loopback();
+      app.set('port', 1);
+      app.listen(0).on('listening', function() {
+        expect(app.get('port'), 'port') .to.not.equal(0).and.not.equal(1);
 
-          done();
-        });
-      }
-    );
+        done();
+      });
+    });
 
     it('uses app config when no parameter is supplied', function(done) {
       var app = loopback();
