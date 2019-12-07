@@ -187,7 +187,7 @@ module.exports = function(Change) {
     const model = this.getModelCtor();
     const id = this.getModelId();
 
-    model.findById(id, function(err, inst) {
+    model.findOne({where: {id},deleted:true}, function(err, inst) {
       if (err) return cb(err);
 
       if (inst) {
