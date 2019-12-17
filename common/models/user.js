@@ -1029,14 +1029,11 @@ module.exports = function(User) {
   /*!
    * Hash the plain password
    */
-  User.hashPassword = async function (plain) {
-    this.validatePassword(plain)
-    const salt = await bcrypt.genSalt(
-      this.settings.saltWorkFactor || SALT_WORK_FACTOR
-    )
-    const hash = await bcrypt.hash(plain, salt)
-    return hash
-  }
+  User.hashPassword = function(plain) {
+    this.validatePassword(plain);
+    const salt = bcrypt.genSaltSync(this.settings.saltWorkFactor || SALT_WORK_FACTOR);
+    return bcrypt.hashSync(plain, salt);
+  };
 
   User.validatePassword = function(plain) {
     let err;
