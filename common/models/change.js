@@ -606,7 +606,7 @@ module.exports = function(Change) {
     ], done);
 
     function getSourceModel(cb) {
-      model.findOne({where: {id:conflict.modelId},deleted:true}, function(err, model) {
+      SourceModel.findOne({where: {id:conflict.modelId},deleted:true}, function(err, model) {
         if (err) return cb(err);
         source = model;
         cb();
@@ -614,7 +614,7 @@ module.exports = function(Change) {
     }
 
     function getTargetModel(cb) {
-      model.findOne({where: {id:conflict.modelId},deleted:true}, function(err, model) {
+      TargetModel.findOne({where: {id:conflict.modelId},deleted:true}, function(err, model) {
         if (err) return cb(err);
         target = model;
         cb();
