@@ -48,7 +48,7 @@
     "express": "^4.14.0",
     "inflection": "^1.6.0",
     "isemail": "^3.2.0",
-    "loopback-connector-remote": "git+https://github.com/asaf050/loopback-connector-remote.git",
+    "loopback-connector-remote": "git+https://github.com/asaf050/loopback-connector-remote.git#next",
     "loopback-datasource-juggler": "^3.28.0",
     "loopback-filters": "^1.0.0",
     "loopback-phase": "^3.0.0",
