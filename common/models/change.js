@@ -309,6 +309,7 @@ module.exports = function(Change) {
    */
 
   Change.revisionForInst = function(inst) {
+    // TODO: Asaf: Better to fetch the real "current"  from the datasource?
     assert(inst, 'Change.revisionForInst() requires an instance object.');
     return this.hash(CJSON.stringify(inst));
   };
