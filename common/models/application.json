@@ -126,5 +126,12 @@
       "type": "date",
       "defaultFn": "now"
     }
-  }
+  },
+  "acls": [
+    {
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "DENY"
+    }
+  ]
 }

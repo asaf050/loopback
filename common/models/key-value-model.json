@@ -1,4 +1,11 @@
 {
   "name": "KeyValueModel",
-  "base": "Model"
+  "base": "Model",
+  "acls": [
+    {
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "DENY"
+    }
+  ]
 }

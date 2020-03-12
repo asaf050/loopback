@@ -10,5 +10,12 @@
     "sourceId": {
       "type": "string"
     }
-  }
+  },
+  "acls": [
+    {
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "DENY"
+    }
+  ]
 }

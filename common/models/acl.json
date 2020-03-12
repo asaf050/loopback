@@ -14,5 +14,12 @@
     "permission": "string",
     "principalType": "string",
     "principalId": "string"
-  }
+  },
+  "acls": [
+    {
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "DENY"
+    }
+  ]
 }

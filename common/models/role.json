@@ -2,7 +2,6 @@
   "name": "Role",
   "trackChanges": true,
   "properties": {
-
     "id": {
       "type": "string",
       "id": true,
@@ -14,11 +13,11 @@
     },
     "description": "string",
     "created": {
-      "type":"date",
+      "type": "date",
       "defaultFn": "now"
     },
     "modified": {
-      "type":"date",
+      "type": "date",
       "defaultFn": "now"
     }
   },
@@ -28,5 +27,12 @@
       "model": "RoleMapping",
       "foreignKey": "roleId"
     }
-  }
+  },
+  "acls": [
+    {
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "DENY"
+    }
+  ]
 }

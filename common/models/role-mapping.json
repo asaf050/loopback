@@ -23,5 +23,12 @@
       "model": "Role",
       "foreignKey": "roleId"
     }
-  }
+  },
+  "acls": [
+    {
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "DENY"
+    }
+  ]
 }

@@ -10,5 +10,12 @@
       "required": true
     },
     "description": "string"
-  }
+  },
+  "acls": [
+    {
+      "principalType": "ROLE",
+      "principalId": "$everyone",
+      "permission": "DENY"
+    }
+  ]
 }
